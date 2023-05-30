@@ -5,10 +5,10 @@ import { NextResponse } from 'next/server';
 
 // Configure Cloudinary
 cloudinary.config({
-    cloud_name: "dxpkn1nc0",
-    api_key: "173471794942925",
-    api_secret: "1k187jbO-iDujErLekPlvB8jHcg"
-});
+    cloud_name: process.env.CLOUD_NAME,
+    api_key: process.env.CLOUD_API_KEY,
+    api_secret: process.env.CLOUD_API_SECRET
+  });
 
 // interface options extends CloudinaryStorage  {
 //     params: {
