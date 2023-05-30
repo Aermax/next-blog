@@ -1,54 +1,105 @@
 "use client"
-import Link from "next/link"
-import Image from "next/image"
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import PostCards from "@/components/PostCards"
+
+import React,{useState, FormEvent,Suspense, ChangeEvent} from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import axios from 'axios';
+import Dropzone from 'react-dropzone';
 
 
-type Post = {
-  title: string,
-  body?: string
-  id: string,
-  image: string
-  authorId: string
+type User = {
+    name: string,
+    email: string,
+
 }
 
 
 
-export default async function Home() {
 
-  const [allPosts, setAllPosts] = useState<Post[]>([])
-  const [loading,setLoading] = useState(false)
 
-  const getPosts = async()=>{
-    setLoading(true)
-    const res = await fetch('http://localhost:3000/api/users',{
-      cache: "no-store"
+function Create() {
+    const [title,setTitle] = useState('')
+    const [content,setContent] = useState('')
+    const [loading, setLoading] = useState(false)
+    const [selectedFile, setSelectedFile] = useState<File | null>(null)
+    const [previewImage, setPreviewImage] = useState<string>("")
+    const [imageUrl,setImageUrl] = useState("")
+    const [isUploaded,setIsUploaded] = useState(false)
+
+    const router = useRouter()
+
+    async function createPost(e: FormEvent){
+        
+        e.preventDefault()
+        const res = await fetch("/api/users",{
+            cache: "no-store",
+            method: "POST",
+            headers: {
+                "Content-Type": "application"
+            },
+            body: JSON.stringify({
+                title: title,
+                body: content,
+                image: imageUrl,
+                authorId: "64673ae92501e17b83bf0b0f"
+            })
+        })
+        
+        router.push('/')
     }
-    )
-  
-    const postData = await res.json()
 
-    setAllPosts(postData)
-    setLoading(false)
+
+
+    const selectImage = (e: ChangeEvent<HTMLInputElement>)=>{
+        const selectedFiles = e.target.files as FileList;
+        setSelectedFile(selectedFiles?.[0])
+        setPreviewImage(URL.createObjectURL(selectedFiles?.[0]))
+
+
+    }
+
+  const uploadImage = async () => {
+    setLoading(true)
+
+    if (!selectedFile) {
+      console.log('No file selected.');
+      setLoading(false)
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('image', selectedFile);
+
+    try {
+      const image = await axios.post('http://localhost:3000/api/users/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      setImageUrl(image.data)
+      setLoading(false)
+      setIsUploaded(true)
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      setLoading(false)
+    }
+
+    
+
+  };
+
+  const removeImage = ()=>{
+    setPreviewImage("") 
+    setIsUploaded(false)
   }
-
-  useEffect(()=>{
-    getPosts()
-  },[])
+    
+   
 
   return (
-    <>
-    {
-      loading ? <div className="container">
-      <div className="circle"></div>
-      <div className="circle"></div>
-      <div className="circle"></div>
-      <div className="circle"></div>
-    </div> : <>
-      <div className='dark:bg-gray-900 h-14 flex items-center justify-between'>
-      <Link href="/"><svg width="200" height="60" viewBox="0 0 414 187" fill="none" xmlns="http://www.w3.org/2000/svg">
+   <>
+   <div className='dark:bg-gray-900 h-14 flex items-center justify-between'>
+   <Link href="/"><svg width="200" height="60" viewBox="0 0 414 187" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M82.646 36.3397C85.7401 34.5534 89.552 34.5534 92.646 36.3397L133.614 59.9925L105.286 76.5799C100.901 72.1776 94.8325 69.4531 88.128 69.4531C81.1554 69.4531 74.871 72.3999 70.4523 77.1161L41.4416 60.1291L82.646 36.3397Z" fill="#00FFCA"/>
 <path d="M64.9303 86.6964L35.9141 69.7063V117.2L64.8222 100.273C64.2287 98.1738 63.9111 95.959 63.9111 93.67C63.9111 91.2458 64.2673 88.9048 64.9303 86.6964Z" fill="#00FFCA"/>
 <path d="M70.1924 109.942L41.8975 126.51L82.646 150.036C85.74 151.822 89.552 151.822 92.646 150.036L133.158 126.647L105.556 110.484C101.152 115.048 94.9714 117.887 88.128 117.887C81.0175 117.887 74.6227 114.822 70.1924 109.942Z" fill="#00FFCA"/>
@@ -61,21 +112,61 @@ export default async function Home() {
 <path d="M348.617 121.714C351.726 123.664 355.481 124.639 359.882 124.639C364.652 124.639 368.684 123.479 371.978 121.16C374.74 119.194 376.807 116.524 378.179 113.151C378.617 112.074 377.929 110.903 376.794 110.65L370.928 109.338C369.93 109.115 368.942 109.692 368.491 110.61C367.807 112.002 366.927 113.12 365.851 113.966C364.402 115.125 362.412 115.705 359.882 115.705C356.298 115.705 353.597 114.453 351.779 111.95C349.961 109.446 349.051 106.165 349.051 102.107C349.051 99.4981 349.433 97.1659 350.198 95.1103C350.962 93.0548 352.148 91.4473 353.755 90.2878C355.363 89.1019 357.405 88.5089 359.882 88.5089C362.07 88.5089 364.02 89.1546 365.733 90.4459C366.977 91.3645 367.964 92.5543 368.693 94.015C369.171 94.9705 370.22 95.5627 371.251 95.2835L377.014 93.7226C378.061 93.4391 378.703 92.3672 378.343 91.3438C377.169 88.0031 375.153 85.3057 372.295 83.2515C368.948 80.8007 364.85 79.5753 360.001 79.5753C355.679 79.5753 351.95 80.5504 348.814 82.5005C345.678 84.4242 343.254 87.0859 341.541 90.4854C339.854 93.8586 338.998 97.7324 338.971 102.107C338.998 106.403 339.828 110.25 341.462 113.65C343.122 117.049 345.507 119.737 348.617 121.714Z" fill="#fff"/>
 <path d="M294.033 69.2575L296.716 66.5744C297.887 65.4029 299.787 65.4029 300.958 66.5744L303.641 69.2575C304.813 70.4291 304.813 72.3286 303.641 73.5002L300.958 76.1833C299.787 77.3548 297.887 77.3548 296.716 76.1833L294.033 73.5002C292.861 72.3286 292.861 70.4291 294.033 69.2575Z" fill="#fff"/>
 </svg></Link>
-      <Link className='bg-teal-500 text-black p-1 rounded-md m-8 mx-4' href="/create">Create</Link>
+   <Link href="/" className='bg-red-500 text-black p-1 w-14 m-5 rounded-md  mx-4' type="submit">Home</Link>
     </div>
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      
-     
-      <h1 className="text-xl m-3">All Blogs</h1>
-      <div className="grid grid-flow-row gap-x-4 gap-y-8 md:grid-cols-1 lg:grid-cols-2">
+    <div className="flex flex-col items-center mt-14 gap-3">
+            <h1>Create a New Post</h1>
+            <form onSubmit={createPost} className='flex flex-col items-center mt-14 gap-3 w-full h-full'>
+                <input
+                    className='text-black w-1/2 rounded-md p-3 focus:outline-none focus:ring-teal-300 focus:ring-2'
+                    type="text"
+                    placeholder='Title'
+                    value={title}
+                    onChange={e=>{setTitle(e.target.value)}}
+                />
+                <textarea
+                    className='text-black w-1/2 rounded-md p-3 focus:outline-none focus:ring-teal-300 focus:ring-2'
+                    placeholder='Write Somthing'
+                    value={content}
+                    // type="text"
+                    onChange={e=>{setContent(e.target.value)}}
+                />
+                {loading ? <h1>Uploading Image..</h1> : 
 
-       <PostCards  posts={allPosts} getPosts={getPosts}/>
     
-      </div>
-    </main>
-      </>
-    }
-    </>
+                    <div className="dark:bg-gray-900 w-1/2 m-auto rounded-md">
+                        <input className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" onChange={selectImage} type="file" name="" id="" />
     
+                    </div>
+                }
+
+                {
+                    previewImage &&  <div>
+                    <img
+                      alt="not found"
+                      width={"250px"}
+                      src={previewImage}
+                    />
+                    <br />
+                    {isUploaded ? <h1>Uploaded</h1> : loading ? <h1>Uploading...</h1> : 
+                    <div className='flex justify-between items-center'>
+                    <button className=' text-black bg-slate-300 p-1 w-1/2 rounded-md  mx-4' onClick={removeImage}>Remove</button>
+                    <button className='bg-blue-400 text-black p-1 w-1/2 rounded-md  mx-4' onClick={uploadImage}>Upload</button>
+                  </div>
+                    }
+                    
+                  </div>
+                }
+     
+
+
+                <button className='bg-teal-500 text-black p-1 w-1/2 rounded-md  mx-4' type="submit">Create</button>
+            </form>
+
+
+    </div>
+   </>
   )
 }
+
+export default Create
